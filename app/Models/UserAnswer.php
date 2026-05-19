@@ -12,9 +12,10 @@ class UserAnswer extends Model
         'user_id',
         'question_id',
         'answer',
+        'selected_option',
         'is_correct',
-    ]
-    ;
+        'answered_at',
+    ];
     public function user(){
         return $this->belongsTo(User::class);
     }
@@ -22,6 +23,6 @@ class UserAnswer extends Model
         return $this->belongsTo(Exam::class);
     }
     public function question(){
-        return $this->belongsTo(Questions::class);
+        return $this->belongsTo(Question::class);
     }
 }

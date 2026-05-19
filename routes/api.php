@@ -123,6 +123,8 @@ Route::middleware('throttle:api')->group(function () {
             Route::post('exams/{exam}/start',      [UserExamController::class, 'start']);
             Route::get('exams/{exam}/status',      [UserExamController::class, 'status']);
             Route::post('exams/{exam}/finish',     [UserExamController::class, 'finish']);
+            Route::get('exams/{exam}/result',      [UserExamController::class, 'result']);
+
             // Submit answers
             Route::post('exams/{exam}/answers',    [UserAnswerController::class, 'store']);
             // Questions listing
