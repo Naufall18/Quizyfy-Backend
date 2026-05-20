@@ -42,68 +42,69 @@ class DashboardController extends Controller
     public function dashboardSiswa()
     {
         $exams = Exam::withCount('questions')
-            ->where('status', 'active')
+            ->where('status', 'aktif')   // enum: 'aktif' bukan 'active'
             ->latest()
             ->paginate(3)
             ->through(function ($exam) {
                 return [
-                    'id' => $exam->id,
-                    'name' => $exam->titles,
+                    'id'             => $exam->id,
+                    'name'           => $exam->titles,
                     'question_count' => $exam->questions_count,
                 ];
             });
 
-
         $completed = ExamResult::where('user_id', auth()->id())->count();
 
         return BaseResponse::OK([
-            'exam' => $exams,
+            'exam'      => $exams,
             'completed' => $completed,
         ], 'Dashboard Siswa retrieved successfully');
     }
 
     public function dashboardGuru()
     {
+        $guruId  = auth()->id();
+        $ujianIds = Exam::where('created_by', $guruId)->pluck('id');
+
         $exams = Exam::withCount('questions')
-            ->where('status', 'active')
+            ->where('created_by', $guruId)
             ->latest()
             ->paginate(3)
             ->through(function ($exam) {
                 return [
-                    'id' => $exam->id,
-                    'name' => $exam->titles,
+                    'id'             => $exam->id,
+                    'name'           => $exam->titles,
                     'question_count' => $exam->questions_count,
-                    'status' => $exam->status,
+                    'status'         => $exam->status,
                 ];
             });
 
-        $ujianIds = Exam::where('created_by', auth()->id())->pluck('id');
         $jumlah_exam = $ujianIds->count();
-        $jumlah = ExamResult::whereIn('exam_id', $ujianIds)
+        $jumlah_siswa = ExamResult::whereIn('exam_id', $ujianIds)
             ->distinct('user_id')
             ->count('user_id');
-        $subscription = Subscription::where('user_id', auth()->id())
+
+        $subscription = Subscription::where('user_id', $guruId)
             ->where('status', 'active')
             ->latest()
             ->first();
 
-        $subcription_end = null;
-        if ($subscription) {
-            $subcription_end = Carbon::parse($subscription->end_date)->format('d F Y');
-        }
+        $subscription_end = $subscription
+            ? Carbon::parse($subscription->end_date)->format('d F Y')
+            : null;
 
         return BaseResponse::OK([
-            'jumlah_exam' => $jumlah_exam > 0 ? $jumlah_exam : 0,
-            'total_siswa' => $jumlah > 0 ? $jumlah : 0,
-            'subscription_end' => $subcription_end,
-            'exam' => $exams
+            'total_exams'      => $jumlah_exam,
+            'total_students'   => $jumlah_siswa,
+            'subscription_end' => $subscription_end,
+            'exam'             => $exams,
         ], 'Dashboard Guru retrieved successfully');
     }
 
     public function dashboardAdmin()
     {
-        $siswa = User::where('role', 'siswa');
-        $guru = User::where('role', 'guru');
+        $siswa = User::where('role', 'user');  // enum: 'user' bukan 'siswa'
+        $guru  = User::where('role', 'guru');
         $subcripton = Subscription::whereIn('plan_type', ['premium', 'enterprise'])
             ->where('status', 'active')
             ->count();
@@ -135,11 +136,10 @@ class DashboardController extends Controller
         }
 
         switch ($user->role) {
-
             case 'guru':
                 return $this->showExamGuru(id: $id);
 
-            case 'siswa':
+            case 'user':   // enum: 'user' bukan 'siswa'
                 return $this->showExamSiswa($id);
 
             default:

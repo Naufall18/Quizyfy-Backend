@@ -39,6 +39,8 @@ Route::middleware('throttle:api')->group(function () {
     Route::post('/register',         [AuthController::class, 'register']);
     Route::post('/forgot-password',  [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password',   [AuthController::class, 'resetPassword']);
+    // Google OAuth — public, tidak butuh Sanctum token
+    Route::post('/auth/google',      [AuthController::class, 'googleLogin']);
     
     // Protected: must be authenticated via Sanctum
     Route::middleware('auth:sanctum')->group(function () {

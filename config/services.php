@@ -35,4 +35,16 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Google OAuth
+    |--------------------------------------------------------------------------
+    | GOOGLE_CLIENT_ID: Android OAuth 2.0 Client ID dari Google Cloud Console
+    | Digunakan untuk memverifikasi `aud` pada ID Token yang dikirim Flutter.
+    | Kosongkan jika ingin skip validasi aud (tidak disarankan untuk production).
+    */
+    'google' => [
+        'client_id' => env('GOOGLE_CLIENT_ID', ''),
+    ],
+
 ];
