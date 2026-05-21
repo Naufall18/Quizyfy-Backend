@@ -23,6 +23,6 @@ class UserAnswer extends Model
         return $this->belongsTo(Exam::class);
     }
     public function question(){
-        return $this->belongsTo(Question::class);
+        return $this->belongsTo(Questions::class);
     }
 }

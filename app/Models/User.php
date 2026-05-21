@@ -44,13 +44,16 @@ class User extends Authenticatable
 
     public function subscriptions()
     {
-        return $this->hasOne(Subscription::class);
+        return $this->hasMany(Subscription::class);
     }
     public function examsCreate(){
         return $this->hasMany(Exam::class, 'created_by');
     }
-    public function examstaken(){
-        return $this->belongsTo(Exam::class,'user_exams');
+    public function examsTaken()
+    {
+        return $this->belongsToMany(Exam::class, 'user_exams')
+            ->withPivot(['started_at', 'finished_at', 'score', 'status'])
+            ->withTimestamps();
     }
     public function examResults(){
         return $this->hasMany(ExamResult::class);
