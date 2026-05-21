@@ -1,61 +1,182 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Quizyfy Backend
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+REST API backend for the [Quizyfy](https://github.com/Naufall18/Quizyfy) online exam platform, built with Laravel 12 and secured with Laravel Sanctum.
 
-## About Laravel
+[![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat&logo=laravel&logoColor=white)](https://laravel.com)
+[![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?style=flat&logo=php&logoColor=white)](https://php.net)
+[![Sanctum](https://img.shields.io/badge/Auth-Sanctum-FF2D20?style=flat)](https://laravel.com/docs/sanctum)
+[![MySQL](https://img.shields.io/badge/Database-MySQL-4479A1?style=flat&logo=mysql&logoColor=white)](https://mysql.com)
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Features
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- Role-based access control: `admin`, `guru`, `user` (siswa)
+- Token authentication via Laravel Sanctum
+- Google OAuth 2.0 login (verify ID token via Google tokeninfo)
+- Exam management: create, update, delete, start, finish, auto-score
+- Question bank with multiple choice, essay, and true/false types
+- Batch answer submission with `updateOrCreate` (idempotent)
+- Auto-calculate score on exam finish
+- Subscription and plan management
+- Consistent JSON responses via `BaseResponse` helper
 
-## Learning Laravel
+---
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Requirements
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+- PHP 8.2+
+- Composer
+- MySQL 8.0+
+- Laravel 12.x
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+---
 
-## Laravel Sponsors
+## Installation
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+# 1. Clone the repository
+git clone https://github.com/Naufall18/Quizyfy-Backend.git
+cd Quizyfy-Backend
 
-### Premium Partners
+# 2. Install PHP dependencies
+composer install
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+# 3. Configure environment
+cp .env.example .env
+php artisan key:generate
 
-## Contributing
+# 4. Set database credentials in .env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=quizyfy
+DB_USERNAME=root
+DB_PASSWORD=
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+# 5. Run migrations and seed test data
+php artisan migrate --seed
 
-## Code of Conduct
+# 6. Start the development server
+php artisan serve
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+The API will be available at `http://localhost:8000/api`.
 
-## Security Vulnerabilities
+---
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+## Seeded Test Data
+
+Running `php artisan migrate --seed` creates:
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | admin@quizyfy.com | password123 |
+| Guru | guru1@quizyfy.com | password123 |
+| Guru | guru2@quizyfy.com | password123 |
+| Siswa | siswa1@quizyfy.com | password123 |
+| Siswa | siswa2@quizyfy.com | password123 |
+| Siswa | siswa3@quizyfy.com | password123 |
+
+Also seeds: 5 categories, 2 active exams, 10 questions (multiple choice + essay + true/false).
+
+---
+
+## API Reference
+
+All endpoints are prefixed with `/api`. Protected endpoints require `Authorization: Bearer {token}`.
+
+### Authentication (Public)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/login` | Login with email and password |
+| POST | `/register` | Register new account (`role`: user/guru/admin) |
+| POST | `/auth/google` | Login or register via Google ID token |
+| POST | `/forgot-password` | Request password reset *(stub)* |
+
+### Common (Authenticated)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/dashboard` | Role-based dashboard stats |
+| POST | `/logout` | Revoke current token |
+| POST | `/change-password` | Change password |
+
+### Guru Endpoints (`role:guru`)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/guru/profile` | Get guru profile |
+| PUT | `/guru/profile` | Update guru profile |
+| GET | `/guru/exams` | List all exams created by guru |
+| POST | `/guru/exams` | Create new exam |
+| PUT | `/guru/exams/{id}` | Update exam |
+| DELETE | `/guru/exams/{id}` | Delete exam (policy: must be owner) |
+| GET | `/guru/bank-soal` | List question bank |
+| POST | `/guru/exams/{exam}/questions` | Add question to exam |
+
+### Siswa Endpoints (`role:user`)
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/user/profile` | Get siswa profile |
+| GET | `/user/exams` | List available exams |
+| POST | `/user/exam/join` | Join exam by token |
+| POST | `/user/exams/{exam}/start` | Start exam session |
+| POST | `/user/exams/{exam}/answers` | Submit answers (batch) |
+| POST | `/user/exams/{exam}/finish` | Finish exam and calculate score |
+| GET | `/user/exams/{exam}/result` | Get exam result |
+| GET | `/user/exams/{exam}/status` | Get remaining time |
+
+---
+
+## Response Format
+
+All responses follow a consistent structure:
+
+```json
+{
+  "success": true,
+  "status": 200,
+  "message": "Data retrieved successfully",
+  "data": { ... }
+}
+```
+
+Error responses:
+```json
+{
+  "success": false,
+  "status": 422,
+  "message": "Validation failed",
+  "errors": { "email": ["The email field is required."] }
+}
+```
+
+---
+
+## Project Structure
+
+```
+app/
+├── Http/
+│   ├── Controllers/     # AuthController, ExamController, UserExamController, etc.
+│   ├── Middleware/      # RoleMiddleware (role-based access)
+│   └── Requests/        # FormRequest validation classes
+├── Models/              # Eloquent models (User, Exam, Questions, UserAnswer, etc.)
+├── Policies/            # ExamPolicy (owner-only update/delete)
+├── Helpers/             # BaseResponse, AvatarHelper
+└── Services/            # BankSoalService
+database/
+├── migrations/          # All table migrations
+└── seeders/             # UserSeeder, CategorySeeder, ExamSeeder
+routes/
+└── api.php              # All API routes grouped by role
+```
+
+---
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+MIT License
