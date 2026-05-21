@@ -19,7 +19,7 @@ class ExamSeeder extends Seeder
         $catInfo  = Category::where('slug', 'informatika')->first();
         $catMath  = Category::where('slug', 'matematika')->first();
 
-        // ── Ujian 1: Informatika Bab 1 (Aktif) ───────────────────────────────
+        // ── Ujian 1: Informatika Bab 1 (Aktif, sudah bisa diakses) ──────────────
         $exam1 = Exam::updateOrCreate(
             ['token' => 'INFBAB001'],
             [
@@ -28,8 +28,8 @@ class ExamSeeder extends Seeder
                 'token'            => 'INFBAB001',
                 'category_id'      => $catInfo?->id,
                 'created_by'       => $guru1->id,
-                'start_time'       => now()->addHour(),
-                'end_time'         => now()->addHours(3),
+                'start_time'       => now()->subMinutes(5),   // sudah mulai 5 menit lalu
+                'end_time'         => now()->addHours(5),      // berakhir 5 jam lagi
                 'duration_minutes' => 90,
                 'total_questions'  => 5,
                 'kkm_score'        => 70,
@@ -108,7 +108,7 @@ class ExamSeeder extends Seeder
 
         $this->attachQuestionsToExam($exam1, $questionsExam1);
 
-        // ── Ujian 2: Matematika Bab 2 (Aktif) ────────────────────────────────
+        // ── Ujian 2: Matematika Bab 2 (Aktif, sudah bisa diakses) ────────────────
         $exam2 = Exam::updateOrCreate(
             ['token' => 'MATBAB002'],
             [
@@ -117,8 +117,8 @@ class ExamSeeder extends Seeder
                 'token'            => 'MATBAB002',
                 'category_id'      => $catMath?->id,
                 'created_by'       => $guru2->id,
-                'start_time'       => now()->addHours(2),
-                'end_time'         => now()->addHours(4),
+                'start_time'       => now()->subMinutes(15),  // sudah mulai 15 menit lalu
+                'end_time'         => now()->addHours(4),      // berakhir 4 jam lagi
                 'duration_minutes' => 60,
                 'total_questions'  => 5,
                 'kkm_score'        => 75,
@@ -194,6 +194,94 @@ class ExamSeeder extends Seeder
         ];
 
         $this->attachQuestionsToExam($exam2, $questionsExam2);
+
+        // ── Ujian 3: Pemrograman Web HTML & CSS (Aktif untuk testing) ────────────
+        $exam3 = Exam::updateOrCreate(
+            ['token' => 'AKTIF003'],
+            [
+                'titles'           => 'Ujian Pemrograman Web - HTML & CSS',
+                'description'      => 'Ujian ini menguji pemahaman siswa tentang dasar-dasar pemrograman web menggunakan HTML dan CSS.',
+                'token'            => 'AKTIF003',
+                'category_id'      => $catInfo?->id,
+                'created_by'       => $guru1->id,
+                'start_time'       => now()->subMinutes(10),
+                'end_time'         => now()->addHours(3),
+                'duration_minutes' => 60,
+                'total_questions'  => 5,
+                'kkm_score'        => 70,
+                'status'           => 'aktif',
+                'shuffle_question' => false,
+                'shuffle_option'   => false,
+                'show_result'      => true,
+                'max_attempts'     => 1,
+                'instructions'     => 'Kerjakan soal dengan teliti. Waktu 60 menit.',
+            ]
+        );
+
+        $questionsExam3 = [
+            [
+                'question'       => 'Tag HTML yang digunakan untuk membuat judul terbesar adalah?',
+                'type'           => 'multiple',
+                'options'        => json_encode([
+                    ['key' => 'A', 'text' => '<h6>'],
+                    ['key' => 'B', 'text' => '<h1>'],
+                    ['key' => 'C', 'text' => '<title>'],
+                    ['key' => 'D', 'text' => '<header>'],
+                ]),
+                'correct_answer' => 'B',
+                'explanation'    => '<h1> adalah tag heading terbesar dalam HTML.',
+                'order'          => 1,
+            ],
+            [
+                'question'       => 'Property CSS yang digunakan untuk mengubah warna teks adalah?',
+                'type'           => 'multiple',
+                'options'        => json_encode([
+                    ['key' => 'A', 'text' => 'background-color'],
+                    ['key' => 'B', 'text' => 'font-color'],
+                    ['key' => 'C', 'text' => 'color'],
+                    ['key' => 'D', 'text' => 'text-color'],
+                ]),
+                'correct_answer' => 'C',
+                'explanation'    => 'Property color digunakan untuk mengubah warna teks dalam CSS.',
+                'order'          => 2,
+            ],
+            [
+                'question'       => 'Atribut HTML yang digunakan untuk menambahkan link adalah?',
+                'type'           => 'multiple',
+                'options'        => json_encode([
+                    ['key' => 'A', 'text' => 'src'],
+                    ['key' => 'B', 'text' => 'href'],
+                    ['key' => 'C', 'text' => 'link'],
+                    ['key' => 'D', 'text' => 'url'],
+                ]),
+                'correct_answer' => 'B',
+                'explanation'    => 'Atribut href pada tag <a> digunakan untuk menentukan URL tujuan link.',
+                'order'          => 3,
+            ],
+            [
+                'question'       => 'CSS adalah singkatan dari?',
+                'type'           => 'multiple',
+                'options'        => json_encode([
+                    ['key' => 'A', 'text' => 'Computer Style Sheets'],
+                    ['key' => 'B', 'text' => 'Creative Style Sheets'],
+                    ['key' => 'C', 'text' => 'Cascading Style Sheets'],
+                    ['key' => 'D', 'text' => 'Colorful Style Sheets'],
+                ]),
+                'correct_answer' => 'C',
+                'explanation'    => 'CSS adalah singkatan dari Cascading Style Sheets.',
+                'order'          => 4,
+            ],
+            [
+                'question'       => 'Jelaskan perbedaan antara HTML dan CSS dalam pembuatan website!',
+                'type'           => 'essay',
+                'options'        => null,
+                'correct_answer' => 'HTML adalah bahasa markup untuk membuat struktur konten website, sedangkan CSS adalah bahasa stylesheet untuk mengatur tampilan dan gaya visual dari konten HTML tersebut.',
+                'explanation'    => null,
+                'order'          => 5,
+            ],
+        ];
+
+        $this->attachQuestionsToExam($exam3, $questionsExam3);
     }
 
     /**
