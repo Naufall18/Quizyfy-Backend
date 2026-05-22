@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Auth;
 use App\Models\UserExam;
+use App\Models\ExamResult;
 
 class ExamController extends Controller
 {
@@ -181,5 +182,29 @@ class ExamController extends Controller
 
         $exam->delete();
         return response()->json(['message' => 'Ujian berhasil dihapus']);
+    }
+
+    public function results($id)
+    {
+        $exam = Exam::findOrFail($id);
+        
+        $results = ExamResult::where('exam_id', $id)
+            ->with('user:id,name,email')
+            ->latest()
+            ->get();
+            
+        // Map the results to have score and passing_grade
+        $mappedResults = $results->map(function ($result) use ($exam) {
+            return [
+                'user' => $result->user,
+                'score' => (int) $result->score,
+                'passing_grade' => $exam->kkm_score,
+                'submitted_at' => $result->completed_at ? $result->completed_at->toIso8601String() : null,
+            ];
+        });
+        
+        return response()->json([
+            'data' => $mappedResults
+        ]);
     }
 }

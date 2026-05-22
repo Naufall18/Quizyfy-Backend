@@ -94,6 +94,7 @@ Route::middleware('throttle:api')->group(function () {
             Route::put('profile',                   [GuruController::class, 'update']);
             Route::post('profile/avatar',           [GuruController::class, 'updateAvatar']);
             // Exams & Questions
+            Route::get('exams/{exam}/results',     [ExamController::class, 'results']);
             Route::apiResource('exams',            ExamController::class);
             Route::apiResource('exams.questions',  QuestionController::class);
             // My subscriptions
