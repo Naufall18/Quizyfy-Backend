@@ -53,7 +53,19 @@ class SiswaController extends Controller
 
         $siswa->update($validated);
 
-        return BaseResponse::OK($siswa, 'Biodata updated successfully');
+        $data = [
+            'name' => $siswa->name,
+            'email' => $siswa->email,
+            'phone' => $siswa->phone_number,
+            'gender' => $siswa->gender,
+            'avatar_url' => AvatarHelper::getAvatarUrl($siswa, 'siswa'),
+            'avatar_uploaded' => $siswa->avatar ? true : false,
+            'role' => $siswa->role,
+            'created_at' => $siswa->created_at,
+            'status' => $siswa->status,
+        ];
+
+        return BaseResponse::OK($data, 'Biodata updated successfully');
     }
 
     public function updateAvatar(UpdateAvatarRequest $request)
