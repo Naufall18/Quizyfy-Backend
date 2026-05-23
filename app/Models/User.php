@@ -46,6 +46,17 @@ class User extends Authenticatable
     {
         return $this->hasMany(Subscription::class);
     }
+    public function teacherCredential()
+    {
+        return $this->hasOne(TeacherCredential::class, 'user_id');
+    }
+    public function getIsPremiumAttribute()
+    {
+        return $this->subscriptions()
+            ->where('status', 'active')
+            ->where('end_date', '>=', now())
+            ->exists();
+    }
     public function examsCreate(){
         return $this->hasMany(Exam::class, 'created_by');
     }

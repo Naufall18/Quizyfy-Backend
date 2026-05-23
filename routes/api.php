@@ -12,6 +12,7 @@ use App\Http\Controllers\SystemSettingController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GuruController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\HelpController;
 use Illuminate\Http\Request;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Support\Facades\RateLimiter;
@@ -61,11 +62,14 @@ Route::middleware('throttle:api')->group(function () {
 
         // 1. Admin-only
         Route::middleware('role:admin')->prefix('admin')->group(function () {
-            // Guru management
+            // User & Guru management
+            Route::get('users',        [AdminController::class, 'listUsers']);
+            Route::get('users/{id}',   [AdminController::class, 'show']);
             Route::get('gurus',        [AdminController::class, 'index']);
             Route::get('gurus/{id}',   [AdminController::class, 'show']);
             // Transaction history
             Route::get('history',      [AdminController::class, 'history']);
+            Route::get('history/{id}', [AdminController::class, 'transactionDetail']);
             // Finance overview
             Route::get('finance',      [AdminController::class, 'keuangan']);
             // Subscriptions
@@ -93,12 +97,14 @@ Route::middleware('throttle:api')->group(function () {
             Route::get('profile/{id}',              [GuruController::class, 'show']);
             Route::put('profile',                   [GuruController::class, 'update']);
             Route::post('profile/avatar',           [GuruController::class, 'updateAvatar']);
+            Route::get('credential',                [GuruController::class, 'getCredential']);
             // Exams & Questions
             Route::get('exams/{exam}/results',     [ExamController::class, 'results']);
+            Route::get('exams/{exam}/statistics',  [ExamController::class, 'statistics']);
             Route::apiResource('exams',            ExamController::class);
             Route::apiResource('exams.questions',  QuestionController::class);
             // My subscriptions
-            Route::get('subscriptions',             [SubscriptionController::class,'subscriptions']);
+            Route::get('subscriptions',             [SubscriptionController::class,'subscription']);
             Route::get('plans',             [SubscriptionController::class,'plan']);
             Route::post('subscriptions',            [SubscriptionController::class,'store']);
             // Categories
@@ -137,6 +143,14 @@ Route::middleware('throttle:api')->group(function () {
             Route::apiResource('options',          SystemSettingController::class);
             // Bank soal for practice
             Route::get('bank-soal',                [QuestionController::class, 'bank']);
+        });
+
+        // Help & FAQ (accessible to authenticated users)
+        Route::prefix('help')->group(function () {
+            Route::get('faq',                      [HelpController::class, 'faq']);
+            Route::get('faq/{id}',                 [HelpController::class, 'faqDetail']);
+            Route::get('faq-categories',           [HelpController::class, 'categories']);
+            Route::get('documentation',            [HelpController::class, 'documentation']);
         });
     });
 });
