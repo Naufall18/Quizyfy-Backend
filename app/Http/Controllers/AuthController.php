@@ -460,7 +460,7 @@ class AuthController extends Controller
             if (!Hash::check($request->current_password, $user->password)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Current password is incorrect',
+                    'message' => 'Password saat ini salah',
                 ], 400);
             }
 
@@ -468,7 +468,7 @@ class AuthController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => 'Password changed successfully',
+                'message' => 'Password berhasil diubah',
             ], 200);
 
         } catch (\Exception $e) {
