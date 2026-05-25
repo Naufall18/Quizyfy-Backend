@@ -1,12 +1,14 @@
-<?php
+<?php 
 
 namespace App\Http\Controllers;
 
+use App\Mail\OtpMail;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
@@ -292,20 +294,149 @@ class AuthController extends Controller
         }
     }
 
+    /**
+     * POST /forgot-password
+     * Kirim OTP/token ke email untuk reset password
+     */
     public function forgotPassword(Request $request)
     {
-        return response()->json([
-            'success' => false,
-            'message' => 'Fitur lupa password belum diimplementasikan.',
-        ], 501);
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = User::where('email', strtolower($request->email))->first();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email tidak terdaftar'
+                ], 404);
+            }
+
+            // Generate 6-digit OTP
+            $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+            
+            // Store OTP in user table (you may want to create a separate password_resets table)
+            $user->update([
+                'reset_token' => $otp,
+                'reset_token_expires_at' => now()->addMinutes(15), // OTP valid for 15 minutes
+            ]);
+
+            // Send OTP via email
+            $emailSent = false;
+            try {
+                Mail::to($user->email)->send(new OtpMail($otp, $user->name));
+                $emailSent = true;
+                Log::info("OTP email sent successfully to {$user->email}");
+            } catch (\Exception $mailError) {
+                Log::error("Failed to send OTP email to {$user->email}: " . $mailError->getMessage());
+            }
+
+            // Log OTP for debugging (remove in production)
+            Log::info("Password reset OTP for {$user->email}: {$otp}");
+
+            $response = [
+                'success' => true,
+                'message' => $emailSent 
+                    ? 'Kode OTP telah dikirim ke email Anda' 
+                    : 'Kode OTP berhasil dibuat (email gagal terkirim, cek log)',
+                'email' => $user->email,
+                'email_sent' => $emailSent,
+            ];
+
+            // Hanya include OTP di response jika email gagal terkirim (fallback development)
+            if (!$emailSent) {
+                $response['otp'] = $otp;
+            }
+
+            return response()->json($response, 200);
+
+        } catch (\Exception $e) {
+            Log::error('Forgot password error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengirim kode reset password'
+            ], 500);
+        }
     }
 
+    /**
+     * POST /reset-password
+     * Reset password dengan OTP/token
+     */
     public function resetPassword(Request $request)
     {
-        return response()->json([
-            'success' => false,
-            'message' => 'Fitur reset password belum diimplementasikan.',
-        ], 501);
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+                'otp' => 'required|string|size:6',
+                'password' => 'required|string|min:6',
+                'password_confirmation' => 'required|string|same:password',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = User::where('email', strtolower($request->email))->first();
+
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email tidak terdaftar'
+                ], 404);
+            }
+
+            // Verify OTP
+            if ($user->reset_token !== $request->otp) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kode OTP tidak valid'
+                ], 400);
+            }
+
+            // Check if OTP expired
+            if (!$user->reset_token_expires_at || now()->isAfter($user->reset_token_expires_at)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Kode OTP telah kadaluarsa'
+                ], 400);
+            }
+
+            // Update password and clear reset token
+            $user->update([
+                'password' => Hash::make($request->password),
+                'reset_token' => null,
+                'reset_token_expires_at' => null,
+            ]);
+
+            Log::info("Password reset successful for user: {$user->email}");
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password berhasil diubah'
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Reset password error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal mengubah password'
+            ], 500);
+        }
     }
 
     public function changePassword(Request $request)
