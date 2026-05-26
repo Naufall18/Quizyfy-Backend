@@ -11,6 +11,12 @@ return Application::configure(basePath: dirname(__DIR__))
         api: __DIR__.'/../routes/api.php',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        then: function ($router) {
+            // API V1 Routes
+            $router->prefix('api/v1')
+                   ->middleware('api')
+                   ->group(base_path('routes/api_v1.php'));
+        },
     )
     ->withMiddleware(function (Middleware $middleware) {
         // Tambahkan CORS middleware
@@ -21,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Alias untuk middleware custom
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'api.version' => \App\Http\Middleware\ApiVersionMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
