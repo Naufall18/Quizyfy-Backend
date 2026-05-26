@@ -313,7 +313,17 @@ class AuthController extends Controller
                 ], 422);
             }
 
-            $user = User::where('email', strtolower($request->email))->first();
+            // Sanitize email input
+            $email = filter_var(strtolower($request->email), FILTER_SANITIZE_EMAIL);
+            
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Format email tidak valid'
+                ], 422);
+            }
+
+            $user = User::where('email', $email)->first();
 
             if (!$user) {
                 return response()->json([
@@ -341,8 +351,10 @@ class AuthController extends Controller
                 Log::error("Failed to send OTP email to {$user->email}: " . $mailError->getMessage());
             }
 
-            // Log OTP for debugging (remove in production)
-            Log::info("Password reset OTP for {$user->email}: {$otp}");
+            // Log OTP hanya di development (SECURITY: jangan log OTP di production!)
+            if (app()->environment('local', 'development')) {
+                Log::info("Password reset OTP for {$user->email}: {$otp}");
+            }
 
             $response = [
                 'success' => true,
@@ -391,7 +403,17 @@ class AuthController extends Controller
                 ], 422);
             }
 
-            $user = User::where('email', strtolower($request->email))->first();
+            // Sanitize email input
+            $email = filter_var(strtolower($request->email), FILTER_SANITIZE_EMAIL);
+            
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Format email tidak valid'
+                ], 422);
+            }
+
+            $user = User::where('email', $email)->first();
 
             if (!$user) {
                 return response()->json([

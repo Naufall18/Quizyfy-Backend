@@ -29,6 +29,8 @@ class User extends Authenticatable
         'is_active',
         'google_id',
         'google_avatar',
+        'reset_token',
+        'reset_token_expires_at',
     ];
 
     /**
@@ -82,6 +84,7 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'reset_token_expires_at' => 'datetime',
             'password' => 'hashed',
         ];
     }
