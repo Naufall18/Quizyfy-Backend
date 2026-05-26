@@ -4,42 +4,29 @@ namespace App\Http\Controllers;
 
 use App\Mail\OtpMail;
 use App\Models\User;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Requests\Auth\ForgotPasswordRequest;
+use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Http\Requests\Auth\GoogleLoginRequest;
+use App\Http\Requests\Auth\ChangePasswordRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-    public function register(Request $request)
+    public function register(RegisterRequest $request)
     {
         try {
-            Log::info('Register request received:', $request->all());
-
-            $validator = Validator::make($request->all(), [
-                'name' => 'required|string|max:255',
-                'email' => 'required|string|email|max:255|unique:users',
-                'password' => 'required|string|min:6',
-                'password_confirmation' => 'required|string|same:password',
-                'role' => 'required|string|in:user,guru,admin',
-            ]);
-
-            if ($validator->fails()) {
-                Log::error('Validation failed:', $validator->errors()->toArray());
-
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
+            Log::info('Register request received:', $request->validated());
 
             /** @var User $user */
             $user = User::create([
                 'name' => $request->name,
-                'email' => strtolower($request->email),
+                'email' => $request->email, // Already lowercased in FormRequest
                 'password' => Hash::make($request->password),
                 'role' => $request->role,
                 'is_active' => true,
@@ -73,23 +60,10 @@ class AuthController extends Controller
         }
     }
 
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'password' => 'required|string',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            if (!Auth::attempt(['email' => strtolower($request->email), 'password' => $request->password])) {
+            if (!Auth::attempt(['email' => $request->email, 'password' => $request->password])) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Email atau password salah'
@@ -177,24 +151,9 @@ class AuthController extends Controller
      *
      * Payload: { id_token, email, name, photo_url? }
      */
-    public function googleLogin(Request $request)
+    public function googleLogin(GoogleLoginRequest $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'id_token'  => 'required|string',
-                'email'     => 'required|email',
-                'name'      => 'required|string|max:255',
-                'photo_url' => 'nullable|string|url',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors'  => $validator->errors(),
-                ], 422);
-            }
-
             // ── 1. Verifikasi ID Token ke Google tokeninfo endpoint ──────────
             $idToken  = $request->input('id_token');
             $googleResponse = \Illuminate\Support\Facades\Http::get(
@@ -298,32 +257,10 @@ class AuthController extends Controller
      * POST /forgot-password
      * Kirim OTP/token ke email untuk reset password
      */
-    public function forgotPassword(Request $request)
+    public function forgotPassword(ForgotPasswordRequest $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Sanitize email input
-            $email = filter_var(strtolower($request->email), FILTER_SANITIZE_EMAIL);
-            
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Format email tidak valid'
-                ], 422);
-            }
-
-            $user = User::where('email', $email)->first();
+            $user = User::where('email', $request->email)->first();
 
             if (!$user) {
                 return response()->json([
@@ -385,35 +322,10 @@ class AuthController extends Controller
      * POST /reset-password
      * Reset password dengan OTP/token
      */
-    public function resetPassword(Request $request)
+    public function resetPassword(ResetPasswordRequest $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'otp' => 'required|string|size:6',
-                'password' => 'required|string|min:6',
-                'password_confirmation' => 'required|string|same:password',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Sanitize email input
-            $email = filter_var(strtolower($request->email), FILTER_SANITIZE_EMAIL);
-            
-            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Format email tidak valid'
-                ], 422);
-            }
-
-            $user = User::where('email', $email)->first();
+            $user = User::where('email', $request->email)->first();
 
             if (!$user) {
                 return response()->json([
@@ -461,22 +373,9 @@ class AuthController extends Controller
         }
     }
 
-    public function changePassword(Request $request)
+    public function changePassword(ChangePasswordRequest $request)
     {
         try {
-            $validator = Validator::make($request->all(), [
-                'current_password' => 'required',
-                'new_password'     => 'required|string|min:6|confirmed',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed',
-                    'errors'  => $validator->errors(),
-                ], 422);
-            }
-
             $user = $request->user();
 
             if (!Hash::check($request->current_password, $user->password)) {

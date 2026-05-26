@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
-class LoginRequest extends FormRequest
+class ForgotPasswordRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,7 +25,6 @@ class LoginRequest extends FormRequest
     {
         return [
             'email' => 'required|email|max:255',
-            'password' => 'required|string|min:6',
         ];
     }
 
@@ -40,9 +39,6 @@ class LoginRequest extends FormRequest
             'email.required' => 'Email wajib diisi',
             'email.email' => 'Format email tidak valid',
             'email.max' => 'Email maksimal 255 karakter',
-            'password.required' => 'Password wajib diisi',
-            'password.string' => 'Password harus berupa teks',
-            'password.min' => 'Password minimal 6 karakter',
         ];
     }
 
@@ -71,7 +67,7 @@ class LoginRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'email' => strtolower($this->email),
+            'email' => filter_var(strtolower($this->email), FILTER_SANITIZE_EMAIL),
         ]);
     }
 }

@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Http\Exceptions\HttpResponseException;
 
-class LoginRequest extends FormRequest
+class ResetPasswordRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -25,7 +25,9 @@ class LoginRequest extends FormRequest
     {
         return [
             'email' => 'required|email|max:255',
+            'otp' => 'required|string|size:6',
             'password' => 'required|string|min:6',
+            'password_confirmation' => 'required|string|same:password',
         ];
     }
 
@@ -40,9 +42,14 @@ class LoginRequest extends FormRequest
             'email.required' => 'Email wajib diisi',
             'email.email' => 'Format email tidak valid',
             'email.max' => 'Email maksimal 255 karakter',
-            'password.required' => 'Password wajib diisi',
+            'otp.required' => 'Kode OTP wajib diisi',
+            'otp.string' => 'Kode OTP harus berupa teks',
+            'otp.size' => 'Kode OTP harus 6 digit',
+            'password.required' => 'Password baru wajib diisi',
             'password.string' => 'Password harus berupa teks',
             'password.min' => 'Password minimal 6 karakter',
+            'password_confirmation.required' => 'Konfirmasi password wajib diisi',
+            'password_confirmation.same' => 'Konfirmasi password tidak cocok',
         ];
     }
 
@@ -71,7 +78,7 @@ class LoginRequest extends FormRequest
     protected function prepareForValidation(): void
     {
         $this->merge([
-            'email' => strtolower($this->email),
+            'email' => filter_var(strtolower($this->email), FILTER_SANITIZE_EMAIL),
         ]);
     }
 }
