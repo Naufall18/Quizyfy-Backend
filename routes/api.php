@@ -30,6 +30,19 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
+// Rate limiter untuk auth endpoints (lebih ketat)
+RateLimiter::for('auth', function (Request $request) {
+    return Limit::perMinute(5)
+        ->by($request->ip())
+        ->response(function () {
+            return response()->json([
+                'success' => false,
+                'message' => 'Terlalu banyak percobaan. Silakan coba lagi dalam beberapa menit.',
+            ], 429);
+        });
+});
+
+// Rate limiter untuk API umum
 RateLimiter::for('api', function (Request $request) {
     return Limit::perMinute(60)
         ->by(optional($request->user())->id ?: $request->ip());
@@ -37,13 +50,14 @@ RateLimiter::for('api', function (Request $request) {
 
 Route::middleware('throttle:api')->group(function () {
 
-    // ─── Public endpoints (no auth) ──────────────────────────────────────────
-    Route::post('/login',            [AuthController::class, 'login']);
-    Route::post('/register',         [AuthController::class, 'register']);
-    Route::post('/forgot-password',  [AuthController::class, 'forgotPassword']);
-    Route::post('/reset-password',   [AuthController::class, 'resetPassword']);
-    // Google OAuth — public, tidak butuh Sanctum token
-    Route::post('/auth/google',      [AuthController::class, 'googleLogin']);
+    // ─── Public endpoints (no auth) dengan rate limiting ketat ───────────────
+    Route::middleware('throttle:auth')->group(function () {
+        Route::post('/login',            [AuthController::class, 'login']);
+        Route::post('/register',         [AuthController::class, 'register']);
+        Route::post('/forgot-password',  [AuthController::class, 'forgotPassword']);
+        Route::post('/reset-password',   [AuthController::class, 'resetPassword']);
+        Route::post('/auth/google',      [AuthController::class, 'googleLogin']);
+    });
 
     // ─── Protected: must be authenticated via Sanctum ─────────────────────────
     Route::middleware('auth:sanctum')->group(function () {
