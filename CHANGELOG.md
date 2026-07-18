@@ -10,3 +10,4 @@ Catatan perubahan penting Quizyfy-Backend (Laravel API).
 - Rate limiting endpoint auth & submit jawaban
 - Dokumentasi Scribe diperbarui mengikuti route v1
 - Endpoint leaderboard per kuis
+- Kaji rate limiting submit jawaban (2026-07-18)
