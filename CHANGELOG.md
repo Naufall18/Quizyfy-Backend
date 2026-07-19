@@ -11,3 +11,4 @@ Catatan perubahan penting Quizyfy-Backend (Laravel API).
 - Dokumentasi Scribe diperbarui mengikuti route v1
 - Endpoint leaderboard per kuis
 - Kaji rate limiting submit jawaban (2026-07-18)
+- Regenerate dokumentasi Scribe dijadwalkan setelah route v1 stabil (2026-07-19)
