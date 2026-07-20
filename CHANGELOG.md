@@ -13,3 +13,4 @@ Catatan perubahan penting Quizyfy-Backend (Laravel API).
 - Kaji rate limiting submit jawaban (2026-07-18)
 - Regenerate dokumentasi Scribe dijadwalkan setelah route v1 stabil (2026-07-19)
 - Regenerate Scribe: route v1 sudah dicek (2026-07-20)
+- Rencana validasi durasi pengerjaan dicatat (2026-07-20)
