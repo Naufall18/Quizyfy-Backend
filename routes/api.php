@@ -80,7 +80,9 @@ Route::middleware('throttle:api')->group(function () {
             // User & Guru management
             Route::get('users',        [AdminController::class, 'listUsers']);
             Route::get('users/{id}',   [AdminController::class, 'show']);
-            Route::get('gurus',        [AdminController::class, 'index']);
+            Route::patch('users/{id}/ban',   [AdminController::class, 'banUser']);
+            Route::patch('users/{id}/unban', [AdminController::class, 'unbanUser']);
+            Route::delete('users/{id}', [AdminController::class, 'destroy']);
             Route::get('gurus/{id}',   [AdminController::class, 'show']);
             // Transaction history
             Route::get('history',      [AdminController::class, 'history']);
@@ -175,6 +177,10 @@ Route::middleware('throttle:api')->group(function () {
             Route::get('faq-categories', [HelpController::class, 'categories']);
             Route::get('documentation',  [HelpController::class, 'documentation']);
         });
+
+        // ─── Dedicated stats endpoints ────────────────────────────────────────
+        Route::middleware('role:guru')->get('guru/stats',  [DashboardController::class, 'guruStats']);
+        Route::middleware('role:admin')->get('admin/stats', [DashboardController::class, 'adminStats']);
 
     }); // end auth:sanctum
 
