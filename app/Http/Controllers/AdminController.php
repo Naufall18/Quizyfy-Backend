@@ -239,4 +239,45 @@ class AdminController extends Controller
 
         return BaseResponse::OK(null, 'User deleted successfully');
     }
+
+    /**
+     * Ban / blokir akun user (non-admin).
+     * PATCH /admin/users/{id}/ban
+     */
+    public function banUser(string $id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->role === 'admin') {
+            return BaseResponse::BadRequest('Tidak dapat mem-ban akun admin.');
+        }
+
+        $user->update(['is_banned' => true, 'is_active' => false]);
+
+        // Revoke semua token agar sesi langsung invalid
+        $user->tokens()->delete();
+
+        return BaseResponse::OK([
+            'id'        => $user->id,
+            'name'      => $user->name,
+            'is_banned' => true,
+        ], 'User berhasil di-ban.');
+    }
+
+    /**
+     * Unban / buka blokir akun user.
+     * PATCH /admin/users/{id}/unban
+     */
+    public function unbanUser(string $id)
+    {
+        $user = User::findOrFail($id);
+
+        $user->update(['is_banned' => false, 'is_active' => true]);
+
+        return BaseResponse::OK([
+            'id'        => $user->id,
+            'name'      => $user->name,
+            'is_banned' => false,
+        ], 'User berhasil di-unban.');
+    }
 }
