@@ -215,4 +215,44 @@ class DashboardController extends Controller
             'questions' => $formattedQuestions,
         ], 'Exam Guru retrieved successfully');
     }
+
+    /**
+     * Statistik ringkas khusus guru — total ujian, aktif, siswa, bank soal.
+     * GET /guru/stats  (role:guru middleware)
+     */
+    public function guruStats(): JsonResponse
+    {
+        $guruId  = auth()->id();
+        $examIds = Exam::where('created_by', $guruId)->pluck('id');
+
+        return BaseResponse::OK([
+            'total_exams'    => $examIds->count(),
+            'active_exams'   => Exam::where('created_by', $guruId)->where('status', 'aktif')->count(),
+            'total_students' => ExamResult::whereIn('exam_id', $examIds)->distinct('user_id')->count('user_id'),
+            'total_questions' => Questions::where('created_by', $guruId)->count(),
+        ], 'Guru stats retrieved');
+    }
+
+    /**
+     * Statistik ringkas khusus admin — total user, langganan aktif, transaksi, pendapatan.
+     * GET /admin/stats  (role:admin middleware)
+     */
+    public function adminStats(): JsonResponse
+    {
+        $totalUsers   = User::whereIn('role', ['user', 'guru'])->count();
+        $activeSubs   = Subscription::where('status', 'active')->count();
+        $totalTx      = DB::table('transactions')->count();
+        $revenueMonth = (int) DB::table('transactions')
+            ->where('status', 'paid')
+            ->whereMonth('created_at', now()->month)
+            ->whereYear('created_at', now()->year)
+            ->sum('amount');
+
+        return BaseResponse::OK([
+            'total_users'          => $totalUsers,
+            'active_subscriptions' => $activeSubs,
+            'total_transactions'   => $totalTx,
+            'revenue_this_month'   => $revenueMonth,
+        ], 'Admin stats retrieved');
+    }
 }
