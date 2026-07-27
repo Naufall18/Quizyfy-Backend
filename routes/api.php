@@ -128,6 +128,7 @@ Route::middleware('throttle:api')->group(function () {
             Route::post('subscriptions',               [SubscriptionController::class, 'store']);
 
             // Categories
+            Route::patch('categories/{category}/toggle', [CategoryController::class, 'toggle']);
             Route::apiResource('categories', CategoryController::class)->shallow();
         });
 
