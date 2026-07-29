@@ -25,6 +25,33 @@ class ExamController extends Controller
         return response()->json($exams);
     }
 
+    /**
+     * Daftar ujian milik guru yang sedang login — dengan filter + pagination.
+     * GET /guru/exams?status=aktif&page=1&per_page=15&search=bab
+     */
+    public function guruIndex(Request $request): JsonResponse
+    {
+        $guruId  = auth()->id();
+        $status  = $request->query('status');
+        $search  = $request->query('search');
+        $perPage = min((int) $request->query('per_page', 15), 100);
+
+        $query = Exam::with(['category:id,name'])
+            ->where('created_by', $guruId);
+
+        if ($status && $status !== 'semua') {
+            $query->where('status', $status);
+        }
+
+        if ($search) {
+            $query->where('titles', 'like', "%{$search}%");
+        }
+
+        $exams = $query->withCount('questions')->latest()->paginate($perPage);
+
+        return BaseResponse::OK($exams, 'Daftar ujian berhasil diambil');
+    }
+
     public function available(Request $request)
     {
         $user = $request->user();
@@ -187,111 +214,58 @@ class ExamController extends Controller
 
     public function results($id)
     {
-        $exam = Exam::findOrFail($id);
-        
-        $results = ExamResult::where('exam_id', $id)
+        $exam = Exam::where('id', $id)
+            ->where('created_by', auth()->id())
+            ->firstOrFail();
+
+        $results = UserExam::where('exam_id', $id)
+            ->whereIn('status', ['completed', 'time_up'])
             ->with('user:id,name,email')
-            ->latest()
-            ->get();
-            
-        // Map the results to have score and passing_grade
-        $mappedResults = $results->map(function ($result) use ($exam) {
-            return [
-                'user' => $result->user,
-                'score' => (int) $result->score,
-                'passing_grade' => $exam->kkm_score,
-                'submitted_at' => $result->completed_at ? $result->completed_at->toIso8601String() : null,
-            ];
-        });
-        
-        return response()->json([
-            'data' => $mappedResults
-        ]);
+            ->latest('finished_at')
+            ->get()
+            ->map(fn($ue) => [
+                'id'             => $ue->id,
+                'user'           => $ue->user,
+                'score'          => $ue->score ?? 0,
+                'total_score'    => 100,
+                'correct_answers' => $ue->correct_answers ?? 0,
+                'wrong_answers'  => $ue->wrong_answers ?? 0,
+                'passed'         => ($ue->score ?? 0) >= ($exam->kkm_score ?? 70),
+                'submitted_at'   => $ue->finished_at,
+            ]);
+
+        return BaseResponse::OK($results, 'Hasil ujian berhasil diambil');
     }
 
     /**
-     * Get detailed statistics for an exam.
-     * For web: exam analytics, difficulty distribution, etc
+     * Statistik ringkas satu ujian (rata-rata nilai, % lulus, dll).
+     * GET /guru/exams/{exam}/statistics
      */
-    public function statistics($id)
+    public function statistics($id): JsonResponse
     {
-        $exam = Exam::with('questions')->findOrFail($id);
-        
-        // Get exam results
-        $results = ExamResult::where('exam_id', $id)
-            ->with('user')
-            ->latest()
+        $exam = Exam::where('id', $id)
+            ->where('created_by', auth()->id())
+            ->firstOrFail();
+
+        $userExams = UserExam::where('exam_id', $id)
+            ->whereIn('status', ['completed', 'time_up'])
             ->get();
-        
-        // Calculate statistics
-        $totalQuestions = $exam->questions->count();
-        $totalSubmissions = $results->count();
-        $passCount = $results->where('score', '>=', $exam->kkm_score)->count();
-        $averageScore = $results->count() > 0 ? $results->avg('score') : 0;
-        
-        // Difficulty distribution
-        $difficultyDistribution = $exam->questions
-            ->groupBy('difficulty')
-            ->map(function ($questions) {
-                return [
-                    'count' => $questions->count(),
-                    'percentage' => round(($questions->count() / count($exam->questions)) * 100, 2)
-                ];
-            });
-        
-        // Type distribution
-        $typeDistribution = $exam->questions
-            ->groupBy('type')
-            ->map(function ($questions) {
-                return [
-                    'count' => $questions->count(),
-                    'percentage' => round(($questions->count() / count($exam->questions)) * 100, 2)
-                ];
-            });
-        
-        // Score distribution (grouped in ranges: 0-20, 20-40, etc)
-        $scoreRanges = [
-            '0-20' => 0,
-            '21-40' => 0,
-            '41-60' => 0,
-            '61-80' => 0,
-            '81-100' => 0,
-        ];
-        
-        foreach ($results as $result) {
-            $score = $result->score;
-            if ($score <= 20) $scoreRanges['0-20']++;
-            elseif ($score <= 40) $scoreRanges['21-40']++;
-            elseif ($score <= 60) $scoreRanges['41-60']++;
-            elseif ($score <= 80) $scoreRanges['61-80']++;
-            else $scoreRanges['81-100']++;
-        }
-        
-        $response = [
-            'exam' => [
-                'id' => $exam->id,
-                'title' => $exam->title,
-                'description' => $exam->description,
-                'duration_minutes' => $exam->duration_minutes,
-                'kkm_score' => $exam->kkm_score,
-            ],
-            'questions' => [
-                'total' => $totalQuestions,
-                'by_type' => $typeDistribution->toArray(),
-                'by_difficulty' => $difficultyDistribution->toArray(),
-            ],
-            'submissions' => [
-                'total' => $totalSubmissions,
-                'pass_count' => $passCount,
-                'fail_count' => $totalSubmissions - $passCount,
-                'pass_rate' => $totalSubmissions > 0 ? round(($passCount / $totalSubmissions) * 100, 2) : 0,
-                'average_score' => round($averageScore, 2),
-                'highest_score' => $results->count() > 0 ? $results->max('score') : 0,
-                'lowest_score' => $results->count() > 0 ? $results->min('score') : 0,
-            ],
-            'score_distribution' => $scoreRanges,
-        ];
-        
-        return BaseResponse::OK($response, 'Exam statistics retrieved successfully');
+
+        $total   = $userExams->count();
+        $passed  = $userExams->filter(fn($ue) => ($ue->score ?? 0) >= ($exam->kkm_score ?? 70))->count();
+        $avgScore = $total > 0 ? round($userExams->avg('score'), 1) : 0;
+        $maxScore = $total > 0 ? $userExams->max('score') : 0;
+        $minScore = $total > 0 ? $userExams->min('score') : 0;
+
+        return BaseResponse::OK([
+            'total_peserta'   => $total,
+            'lulus'           => $passed,
+            'tidak_lulus'     => $total - $passed,
+            'pass_rate'       => $total > 0 ? round($passed / $total * 100, 1) : 0,
+            'rata_rata_nilai' => $avgScore,
+            'nilai_tertinggi' => $maxScore,
+            'nilai_terendah'  => $minScore,
+            'kkm'             => $exam->kkm_score ?? 70,
+        ], 'Statistik ujian berhasil diambil');
     }
 }
