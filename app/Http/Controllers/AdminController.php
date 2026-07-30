@@ -28,57 +28,67 @@ class AdminController extends Controller
     }
 
     /**
-     * Display a listing of all users (Guru & Siswa) with search and filters.
+     * Daftar semua pengguna (Guru & Siswa) dengan search, filter, dan pagination.
+     * Query params: search, role (user|guru), status (banned|active), per_page, page
      */
     public function listUsers(Request $request)
     {
-        $search = $request->query('search');
-        $role = $request->query('role');
+        $search      = $request->query('search');
+        $role        = $request->query('role');
+        $status      = $request->query('status');       // 'banned' | 'active'
         $statusPremium = $request->query('status_premium');
-        $perPage = $request->query('per_page', 10);
+        $perPage     = min((int) $request->query('per_page', 10), 100);
 
-        $query = User::query();
+        $query = User::query()->where('role', '!=', 'admin');
 
-        // Exclude Admin from standard user list
-        $query->where('role', '!=', 'admin');
-
+        // Pencarian nama atau email
         if ($search) {
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', '%' . $search . '%')
-                  ->orWhere('email', 'like', '%' . $search . '%');
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
+        // Filter peran (terima 'siswa' sebagai alias 'user')
         if ($role) {
             $dbRole = $role === 'siswa' ? 'user' : $role;
             $query->where('role', $dbRole);
         }
 
-        if ($statusPremium) {
-            if ($statusPremium === 'premium') {
-                $query->whereHas('subscriptions', function ($q) {
-                    $q->where('status', 'active')
-                      ->where('end_date', '>=', now());
-                });
-            } elseif ($statusPremium === 'gratis') {
-                $query->whereDoesntHave('subscriptions', function ($q) {
-                    $q->where('status', 'active')
-                      ->where('end_date', '>=', now());
-                });
-            }
+        // Filter status banned/active
+        if ($status === 'banned') {
+            $query->where(function ($q) {
+                $q->where('is_banned', true)->orWhere('is_active', false);
+            });
+        } elseif ($status === 'active') {
+            $query->where(function ($q) {
+                $q->where('is_banned', false)->orWhereNull('is_banned');
+            })->where('is_active', true);
+        }
+
+        // Filter premium/gratis
+        if ($statusPremium === 'premium') {
+            $query->whereHas('subscriptions', fn($q) =>
+                $q->where('status', 'active')->where('end_date', '>=', now())
+            );
+        } elseif ($statusPremium === 'gratis') {
+            $query->whereDoesntHave('subscriptions', fn($q) =>
+                $q->where('status', 'active')->where('end_date', '>=', now())
+            );
         }
 
         $users = $query->latest()->paginate($perPage);
 
         $formattedUsers = $users->through(function ($user) {
             return [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role === 'guru' ? 'Guru' : 'Siswa',
+                'id'             => $user->id,
+                'name'           => $user->name,
+                'email'          => $user->email,
+                'role'           => $user->role,
+                'is_banned'      => (bool) ($user->is_banned ?? false),
+                'is_active'      => (bool) ($user->is_active ?? true),
                 'status_premium' => $user->is_premium ? 'Premium' : 'Gratis',
-                'is_active' => (bool) $user->is_active,
-                'created_at' => $user->created_at ? $user->created_at->translatedFormat('d F Y') : null,
+                'created_at'     => $user->created_at ? $user->created_at->translatedFormat('d F Y') : null,
             ];
         });
 
