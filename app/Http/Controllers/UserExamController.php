@@ -218,16 +218,20 @@ class UserExamController extends Controller
             ->values();
 
         return response()->json([
-            'score'        => $userExam->score ?? 0,
-            'correct'      => $userExam->correct_answers ?? 0,
-            'wrong'        => $userExam->wrong_answers ?? 0,
-            'unanswered'   => $userExam->unanswered ?? 0,
-            'submitted_at' => $userExam->finished_at,
-            'exam'         => [
-                'id'    => $exam->id,
-                'titles' => $exam->titles,
+            'data' => [
+                'exam_id'          => $exam->id,
+                'exam_title'       => $exam->titles,
+                'score'            => $userExam->score ?? 0,
+                'total_score'      => 100,
+                'kkm_score'        => $exam->kkm_score,
+                'correct_answers'  => $userExam->correct_answers ?? 0,
+                'wrong_answers'    => $userExam->wrong_answers ?? 0,
+                'total_questions'  => $exam->questions()->count(),
+                'duration_minutes' => $exam->duration_minutes,
+                'submitted_at'     => $userExam->finished_at,
+                'passed'           => ($userExam->score ?? 0) >= ($exam->kkm_score ?? 70),
+                'answers'          => $answers,
             ],
-            'answers' => $answers,
         ]);
     }
 }
