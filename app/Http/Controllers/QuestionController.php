@@ -26,21 +26,31 @@ class QuestionController extends Controller
 
     public function index(Request $request)
     {
-        $search = $request->query('search');
+        $search   = $request->query('search');
+        $category = $request->query('category_id');
+        $type     = $request->query('type'); // pg|essay|true_false
+        $perPage  = min((int) $request->query('per_page', 15), 100);
+        $guruId   = auth()->id(); // hanya ambil soal milik guru ini
 
-        $query = Questions::query();
+        $query = Questions::where('created_by', $guruId);
 
         if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('question', 'like', '%' . $search . '%')
-                    ->orWhereHas('exam', function ($q2) use ($search) {
-                        $q2->where('titles', 'like', '%' . $search . '%');
-                    }); 
-            });
+            $query->where('question', 'like', "%{$search}%");
         }
 
-        $questions = $query->paginate(10);
-        return BaseResponse::OK($questions, $questions->count() > 0 ? 'Question Retrived successfully' : 'No questions found');
+        if ($category) {
+            $query->where('category_id', $category);
+        }
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        $questions = $query->latest()->paginate($perPage);
+
+        return BaseResponse::OK($questions, $questions->total() > 0
+            ? 'Soal berhasil diambil'
+            : 'Belum ada soal di bank soal');
     }
 
     public function attachToExam(Request $request)
@@ -95,16 +105,17 @@ class QuestionController extends Controller
     {
         $validated = $request->validated();
 
+        // Pastikan soal terikat ke guru yang membuat
+        $validated['created_by'] = auth()->id();
 
         if ($request->hasFile('image')) {
             $validated['image'] = $request->file('image')
                 ->store('questions', 'public');
         }
 
-
         $question = Questions::create($validated);
 
-        return BaseResponse::Created($question, 'Question created successfully');
+        return BaseResponse::Created($question, 'Soal berhasil ditambahkan ke bank soal');
     }
 
     /**
@@ -112,48 +123,72 @@ class QuestionController extends Controller
      */
     public function show(string $id)
     {
-        $data = Questions::find($id);
+        $question = Questions::where('id', $id)
+            ->where('created_by', auth()->id())
+            ->first();
 
-        if (!$data) {
-            return BaseResponse::NotFound('Question not found');
+        if (!$question) {
+            return BaseResponse::NotFound('Soal tidak ditemukan');
         }
 
-        return BaseResponse::OK($data, 'Question retrieved successfully');
+        return BaseResponse::OK($question, 'Soal berhasil diambil');
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update soal — hanya pemilik yang boleh mengubah.
      */
     public function update(QuestionsRequest $request, string $id)
     {
-        $question = Questions::find($id);
+        $question = Questions::where('id', $id)
+            ->where('created_by', auth()->id())
+            ->first();
 
         if (!$question) {
-            return BaseResponse::NotFound('Question not found');
+            return BaseResponse::NotFound('Soal tidak ditemukan atau bukan milik Anda');
         }
 
         $validated = $request->validated();
 
-        if (isset($validated['options'])) {
+        if (isset($validated['options']) && is_array($validated['options'])) {
             $validated['options'] = json_encode($validated['options']);
+        }
+
+        if ($request->hasFile('image')) {
+            $validated['image'] = $request->file('image')
+                ->store('questions', 'public');
         }
 
         $question->update($validated);
 
-        return BaseResponse::OK($question, 'Question updated successfully');
+        return BaseResponse::OK($question->fresh(), 'Soal berhasil diperbarui');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Hapus soal — hanya pemilik yang boleh menghapus.
+     * Guard: tidak bisa hapus jika masih terhubung ke ujian aktif.
      */
     public function destroy(string $id)
     {
-        $question = Questions::find($id);
+        $question = Questions::where('id', $id)
+            ->where('created_by', auth()->id())
+            ->first();
+
         if (!$question) {
-            return BaseResponse::NotFound('Question not found');
+            return BaseResponse::NotFound('Soal tidak ditemukan atau bukan milik Anda');
         }
+
+        // Cek apakah masih dipakai di ujian aktif
+        $usedInActiveExam = $question->exams()
+            ->where('status', 'aktif')
+            ->exists();
+
+        if ($usedInActiveExam) {
+            return BaseResponse::BadRequest(
+                'Soal tidak dapat dihapus karena sedang digunakan dalam ujian aktif.'
+            );
+        }
+
         $question->delete();
 
         return BaseResponse::NoContent();
     }
-}
