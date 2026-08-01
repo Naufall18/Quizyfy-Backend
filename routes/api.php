@@ -66,6 +66,7 @@ Route::middleware('throttle:api')->group(function () {
         Route::get('/user',             [AuthController::class, 'user']);
         Route::post('/change-password', [AuthController::class, 'changePassword']);
         Route::put('/update-password',  [AuthController::class, 'update']);
+        Route::put('/update-profile',   [AuthController::class, 'updateProfile']);
         Route::post('/logout',          [AuthController::class, 'logout']);
 
         // Dashboard umum (berdasarkan role: admin, guru, siswa)
