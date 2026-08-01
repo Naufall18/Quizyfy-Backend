@@ -400,4 +400,58 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Perbarui profil user yang sedang login (nama dan email).
+     * PUT /update-profile
+     */
+    public function updateProfile(Request $request)
+    {
+        try {
+            /** @var User $user */
+            $user = Auth::user();
+
+            $validated = $request->validate([
+                'name'  => ['sometimes', 'string', 'max:100'],
+                'email' => ['sometimes', 'email', 'unique:users,email,' . $user->id],
+            ]);
+
+            $user->update($validated);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Profil berhasil diperbarui',
+                'user'    => [
+                    'id'    => $user->id,
+                    'name'  => $user->fresh()->name,
+                    'email' => $user->fresh()->email,
+                    'role'  => $user->role,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Update profile error: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal memperbarui profil'], 500);
+        }
+    }
+
+    /**
+     * Kembalikan data user yang sedang login.
+     * GET /user (override endpoint default Sanctum)
+     */
+    public function user(Request $request)
+    {
+        $user = $request->user();
+        return response()->json([
+            'success' => true,
+            'user'    => [
+                'id'        => $user->id,
+                'name'      => $user->name,
+                'email'     => $user->email,
+                'role'      => $user->role,
+                'is_active' => (bool) $user->is_active,
+                'avatar'    => $user->avatar ?? null,
+                'created_at' => $user->created_at?->toIso8601String(),
+            ],
+        ]);
+    }
 }
