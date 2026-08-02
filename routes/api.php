@@ -140,6 +140,7 @@ Route::middleware('throttle:api')->group(function () {
             Route::get('profile',                      [SiswaController::class, 'index']);
             Route::get('profile/{id}',                 [SiswaController::class, 'show']);
             Route::put('profile',                      [SiswaController::class, 'update']);
+            Route::put('profile/password',             [SiswaController::class, 'changePassword']);
             Route::post('profile/avatar',              [SiswaController::class, 'updateAvatar']);
 
             // Categories
