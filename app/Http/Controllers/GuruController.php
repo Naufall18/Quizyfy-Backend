@@ -167,4 +167,37 @@ class GuruController extends Controller
                 : 'Belum pernah digunakan',
         ], 'Guru credential retrieved successfully');
     }
+
+    /**
+     * Ringkasan statistik guru — untuk dashboard web & mobile.
+     * GET /guru/stats
+     */
+    public function stats(): JsonResponse
+    {
+        $guru    = auth()->user();
+        $examIds = \App\Models\Exam::where('created_by', $guru->id)->pluck('id');
+
+        $totalExams    = $examIds->count();
+        $activeExams   = \App\Models\Exam::where('created_by', $guru->id)->where('status', 'aktif')->count();
+        $totalStudents = \App\Models\UserExam::whereIn('exam_id', $examIds)->distinct('user_id')->count('user_id');
+        $totalQuestions = \App\Models\Questions::where('created_by', $guru->id)->count();
+
+        $subscription = \App\Models\Subscription::where('user_id', $guru->id)
+            ->where('status', 'active')
+            ->where('end_date', '>=', now())
+            ->latest()
+            ->first();
+
+        return BaseResponse::OK([
+            'total_exams'      => $totalExams,
+            'active_exams'     => $activeExams,
+            'total_students'   => $totalStudents,
+            'total_questions'  => $totalQuestions,
+            'subscription'     => $subscription ? [
+                'plan_type'  => $subscription->plan_type,
+                'end_date'   => Carbon::parse($subscription->end_date)->translatedFormat('d F Y'),
+                'days_left'  => max(0, now()->diffInDays($subscription->end_date, false)),
+            ] : null,
+        ], 'Statistik guru berhasil diambil');
+    }
 }
