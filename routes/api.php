@@ -116,6 +116,8 @@ Route::middleware('throttle:api')->group(function () {
             Route::put('profile',                      [GuruController::class, 'update']);
             Route::post('profile/avatar',              [GuruController::class, 'updateAvatar']);
             Route::get('credential',                   [GuruController::class, 'getCredential']);
+            Route::get('stats',                        [GuruController::class, 'stats']);
+            Route::get('stats',                        [GuruController::class, 'stats']);
 
             // Exams & Questions
             Route::get('exams/{exam}/results',         [ExamController::class, 'results']);
