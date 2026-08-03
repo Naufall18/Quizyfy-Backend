@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Exam;
 use App\Models\UserAnswer;
+use App\Helpers\BaseResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class UserAnswerController extends Controller
 {
@@ -74,5 +76,59 @@ class UserAnswerController extends Controller
         }
 
         return response()->json(['answers' => $created, 'count' => count($created)], 201);
+    }
+
+    /**
+     * GET /guru/exams/{exam}/answers
+     * Review jawaban semua siswa untuk satu ujian (guru only).
+     *
+     * Response per soal:
+     * - question + kunci jawaban + penjelasan
+     * - daftar jawaban siswa beserta status benar/salah
+     */
+    public function getByExam(Exam $exam): JsonResponse
+    {
+        // Pastikan hanya guru pemilik ujian yang bisa akses
+        if ($exam->created_by !== auth()->id()) {
+            return BaseResponse::error('Unauthorized', 403);
+        }
+
+        // Ambil semua soal ujian beserta jawaban siswa
+        $questions = $exam->questions()
+            ->where('is_active', true)
+            ->orderBy('order')
+            ->get(['id', 'question', 'type', 'options', 'correct_answer', 'explanation', 'order']);
+
+        $questionsData = $questions->map(function ($q) use ($exam) {
+            $answers = UserAnswer::where('exam_id', $exam->id)
+                ->where('question_id', $q->id)
+                ->with('user:id,name,email')
+                ->get()
+                ->map(fn($ua) => [
+                    'user'       => $ua->user,
+                    'answer'     => $ua->answer ?? $ua->selected_option,
+                    'is_correct' => $ua->is_correct,
+                    'answered_at' => $ua->answered_at,
+                ]);
+
+            return [
+                'id'             => $q->id,
+                'order'          => $q->order,
+                'question'       => $q->question,
+                'type'           => $q->type,
+                'options'        => $q->options,
+                'correct_answer' => $q->correct_answer,
+                'explanation'    => $q->explanation,
+                'answers'        => $answers,
+                'answer_count'   => $answers->count(),
+                'correct_count'  => $answers->where('is_correct', true)->count(),
+            ];
+        });
+
+        return BaseResponse::OK([
+            'exam_id'    => $exam->id,
+            'exam_title' => $exam->titles,
+            'questions'  => $questionsData,
+        ], 'Jawaban siswa berhasil diambil');
     }
 }
