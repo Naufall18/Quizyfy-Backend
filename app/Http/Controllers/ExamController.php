@@ -268,4 +268,26 @@ class ExamController extends Controller
             'kkm'             => $exam->kkm_score ?? 70,
         ], 'Statistik ujian berhasil diambil');
     }
+
+    /**
+     * Toggle status ujian antara aktif dan draft.
+     * PATCH /guru/exams/{exam}/toggle
+     */
+    public function toggleStatus($id): JsonResponse
+    {
+        $exam = Exam::where('id', $id)
+            ->where('created_by', auth()->id())
+            ->firstOrFail();
+
+        // Toggle: aktif → draft, selainnya → aktif
+        $newStatus = $exam->status === 'aktif' ? 'draft' : 'aktif';
+        $exam->update(['status' => $newStatus]);
+
+        return BaseResponse::OK(
+            ['status' => $newStatus, 'exam_id' => $exam->id],
+            $newStatus === 'aktif'
+                ? 'Ujian berhasil diaktifkan'
+                : 'Ujian berhasil dinonaktifkan'
+        );
+    }
 }

@@ -122,6 +122,7 @@ Route::middleware('throttle:api')->group(function () {
             // Exams & Questions
             Route::get('exams/{exam}/results',         [ExamController::class, 'results']);
             Route::get('exams/{exam}/statistics',      [ExamController::class, 'statistics']);
+            Route::patch('exams/{exam}/toggle',        [ExamController::class, 'toggleStatus']);
             Route::get('exams',                        [ExamController::class, 'guruIndex']);
             Route::apiResource('exams',                ExamController::class)->except(['index']);
             Route::apiResource('exams.questions',      QuestionController::class);
