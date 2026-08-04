@@ -166,6 +166,7 @@ Route::middleware('throttle:api')->group(function () {
 
             // Answers
             Route::post('exams/{exam}/answers',        [UserAnswerController::class, 'store']);
+            Route::get('exams/{exam}/my-answers',      [UserAnswerController::class, 'getMyAnswers']);
 
             // Questions
             Route::get('questions',                    [QuestionController::class, 'index']);

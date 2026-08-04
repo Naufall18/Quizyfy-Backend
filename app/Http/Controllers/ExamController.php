@@ -31,10 +31,11 @@ class ExamController extends Controller
      */
     public function guruIndex(Request $request): JsonResponse
     {
-        $guruId  = auth()->id();
-        $status  = $request->query('status');
-        $search  = $request->query('search');
-        $perPage = min((int) $request->query('per_page', 15), 100);
+        $guruId      = auth()->id();
+        $status      = $request->query('status');
+        $search      = $request->query('search');
+        $categoryId  = $request->query('category_id');
+        $perPage     = min((int) $request->query('per_page', 15), 100);
 
         $query = Exam::with(['category:id,name'])
             ->where('created_by', $guruId);
@@ -47,6 +48,10 @@ class ExamController extends Controller
             $query->where('titles', 'like', "%{$search}%");
         }
 
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+
         $exams = $query->withCount('questions')->latest()->paginate($perPage);
 
         return BaseResponse::OK($exams, 'Daftar ujian berhasil diambil');
@@ -54,14 +59,20 @@ class ExamController extends Controller
 
     public function available(Request $request)
     {
-        $user = $request->user();
-        $available = Exam::with('category:id,name')
+        $user       = $request->user();
+        $categoryId = $request->query('category_id');
+
+        $query = Exam::with('category:id,name')
             ->where('status', 'aktif')
-            ->whereDoesntHave('userExams', function ($query) use ($user) {
-                $query->where('user_id', $user->id);
-            })
-            ->latest()
-            ->paginate(10);
+            ->whereDoesntHave('userExams', function ($q) use ($user) {
+                $q->where('user_id', $user->id);
+            });
+
+        if ($categoryId) {
+            $query->where('category_id', $categoryId);
+        }
+
+        $available = $query->latest()->paginate(10);
 
         return response()->json($available);
     }

@@ -12,7 +12,7 @@ class UserAnswerController extends Controller
 {
     /**
      * POST /user/exams/{exam}/answers
-     * Store a single answer. Can be called multiple times (one per question).
+     * Store a single answer dengan auto-check is_correct.
      */
     public function store(Request $request, Exam $exam)
     {
@@ -22,25 +22,36 @@ class UserAnswerController extends Controller
             'selected_option' => 'nullable|string',
         ]);
 
-        $data['user_id']     = auth()->id();
-        $data['exam_id']     = $exam->id;
-        $data['answered_at'] = now();
+        $userId  = auth()->id();
+        $answer  = $data['answer'] ?? $data['selected_option'] ?? '';
 
-        // Use answer or selected_option
-        if (empty($data['answer']) && !empty($data['selected_option'])) {
-            $data['answer'] = $data['selected_option'];
+        // Gunakan selected_option jika answer kosong
+        if (empty($answer) && !empty($data['selected_option'])) {
+            $answer = $data['selected_option'];
         }
 
-        $answer = UserAnswer::updateOrCreate(
+        // Auto-check: bandingkan dengan correct_answer di soal
+        $question  = \App\Models\Questions::find($data['question_id']);
+        $isCorrect = null;
+        if ($question && $question->correct_answer !== null) {
+            $isCorrect = strtolower(trim($answer)) === strtolower(trim($question->correct_answer));
+        }
+
+        $userAnswer = UserAnswer::updateOrCreate(
             [
-                'user_id'     => $data['user_id'],
-                'exam_id'     => $data['exam_id'],
+                'user_id'     => $userId,
+                'exam_id'     => $exam->id,
                 'question_id' => $data['question_id'],
             ],
-            $data
+            [
+                'answer'          => $answer,
+                'selected_option' => $data['selected_option'] ?? $answer,
+                'is_correct'      => $isCorrect,
+                'answered_at'     => now(),
+            ]
         );
 
-        return response()->json($answer, 201);
+        return response()->json($userAnswer, 201);
     }
 
     /**
@@ -76,6 +87,50 @@ class UserAnswerController extends Controller
         }
 
         return response()->json(['answers' => $created, 'count' => count($created)], 201);
+    }
+
+    /**
+     * GET /user/exams/{exam}/my-answers
+     * Siswa melihat jawaban sendiri beserta kunci dan pembahasan.
+     */
+    public function getMyAnswers(Exam $exam): JsonResponse
+    {
+        $userId = auth()->id();
+
+        // Pastikan siswa pernah join ujian ini
+        $userExam = \App\Models\UserExam::where('exam_id', $exam->id)
+            ->where('user_id', $userId)
+            ->first();
+
+        if (!$userExam) {
+            return BaseResponse::error('Anda belum pernah mengerjakan ujian ini', 403);
+        }
+
+        // Ambil jawaban siswa untuk ujian ini
+        $myAnswers = UserAnswer::where('exam_id', $exam->id)
+            ->where('user_id', $userId)
+            ->with('question:id,question,type,options,correct_answer,explanation,order')
+            ->get();
+
+        $result = $myAnswers->map(fn($ua) => [
+            'question_id'    => $ua->question_id,
+            'question'       => $ua->question?->question,
+            'type'           => $ua->question?->type,
+            'options'        => $ua->question?->options,
+            'correct_answer' => $ua->question?->correct_answer,
+            'explanation'    => $ua->question?->explanation,
+            'order'          => $ua->question?->order,
+            'my_answer'      => $ua->answer ?? $ua->selected_option,
+            'is_correct'     => $ua->is_correct,
+            'answered_at'    => $ua->answered_at,
+        ]);
+
+        return BaseResponse::OK([
+            'exam_id'    => $exam->id,
+            'exam_title' => $exam->titles,
+            'score'      => $userExam->score,
+            'answers'    => $result,
+        ], 'Jawaban berhasil diambil');
     }
 
     /**
