@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Helpers\AvatarHelper;
 use App\Helpers\BaseResponse;
 use Illuminate\Support\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Requests\UpdateAvatarRequest;
 use App\Http\Requests\UpdateBiodataRequest;
